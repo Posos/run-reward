@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Run Reward Tracker</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e17;--card:#141b2d;--card-hover:#1a2340;--border:#1e2a45;
+  --green:#00e676;--green-dim:#00e67633;--red:#ff1744;--red-dim:#ff174433;
+  --gold:#ffd740;--gold-dim:#ffd74033;--blue:#448aff;--blue-dim:#448aff33;
+  --purple:#bb86fc;--purple-dim:#bb86fc33;--cyan:#00e5ff;--cyan-dim:#00e5ff33;
+  --orange:#ff9100;--orange-dim:#ff910033;--pink:#ff4081;--pink-dim:#ff408133;
+  --text:#e8eaf6;--text2:#7986a0;--text3:#4a5568;
+  --accent:var(--green);--accent-dim:var(--green-dim);
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh;padding:16px 20px}
+.container{max-width:1100px;margin:0 auto}
+.hidden{display:none!important}
+
+/* ========== HOME / LANDING PAGE ========== */
+.home-header{text-align:center;padding:40px 0 10px}
+.home-header h1{font-size:2.6em;font-weight:800;background:linear-gradient(135deg,var(--green),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px}
+.home-header .sub{color:var(--text2);font-size:1em;margin-top:6px}
+.home-bar{display:flex;justify-content:center;gap:10px;margin:20px 0;flex-wrap:wrap}
+.home-bar-btn{padding:10px 20px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text2);font-size:.85em;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.home-bar-btn:hover{border-color:var(--blue);color:var(--text)}
+.home-bar-btn.save{border-color:var(--green);color:var(--green)}
+.home-bar-btn.save:hover{background:var(--green-dim)}
+.home-bar-btn.load{border-color:var(--blue);color:var(--blue)}
+.home-bar-btn.load:hover{background:var(--blue-dim)}
+
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin:24px 0 40px}
+.profile-tile{background:var(--card);border:2px solid var(--border);border-radius:18px;padding:28px 24px;text-align:center;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+.profile-tile:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.profile-tile .pt-emoji{font-size:3.2em;margin-bottom:8px;display:block}
+.profile-tile .pt-name{font-size:1.4em;font-weight:800;margin-bottom:12px}
+.profile-tile .pt-stats{display:flex;justify-content:center;gap:16px;margin-top:8px}
+.profile-tile .pt-stat{text-align:center}
+.profile-tile .pt-stat-val{font-size:1.2em;font-weight:700}
+.profile-tile .pt-stat-lbl{font-size:.65em;text-transform:uppercase;letter-spacing:1px;color:var(--text2)}
+.profile-tile .pt-badge{position:absolute;top:12px;right:14px;font-size:.7em;padding:3px 10px;border-radius:12px;font-weight:600}
+
+.add-tile{border:2px dashed var(--border);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px}
+.add-tile:hover{border-color:var(--gold);background:var(--gold-dim)}
+.add-tile .pt-emoji{opacity:.5}
+.add-tile .pt-name{color:var(--text2)}
+
+/* ========== DASHBOARD TOP BAR ========== */
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:10px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px}
+.topbar select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.85em;cursor:pointer;outline:none;min-width:150px}
+.topbar select:focus{border-color:var(--blue)}
+.topbar .spacer{flex:1}
+.topbar-btn{padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text2);font-size:.78em;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.topbar-btn:hover{border-color:var(--blue);color:var(--text)}
+.topbar-btn.save{border-color:var(--green);color:var(--green)}
+.topbar-btn.save:hover{background:var(--green-dim)}
+.topbar-btn.newmonth{border-color:var(--gold);color:var(--gold)}
+.topbar-btn.newmonth:hover{background:var(--gold-dim)}
+.topbar-btn.back{border-color:var(--purple);color:var(--purple)}
+.topbar-btn.back:hover{background:var(--purple-dim)}
+
+/* ========== DASHBOARD HEADER ========== */
+.header{text-align:center;padding:16px 0 12px}
+.header h1{font-size:2em;font-weight:800;letter-spacing:-1px}
+.header .sub{color:var(--text2);font-size:.92em;margin-top:3px}
+.header .sub span{color:var(--gold);font-weight:600}
+.header .runner-name{font-size:1.1em;font-weight:700;margin-top:4px}
+
+/* ========== ALL-TIME BANNER ========== */
+.alltime{display:flex;align-items:center;justify-content:center;gap:18px;padding:10px 18px;background:linear-gradient(90deg,var(--accent-dim),var(--purple-dim));border:1px solid var(--border);border-radius:10px;margin-bottom:14px;flex-wrap:wrap}
+.alltime .at-item{font-size:.82em;color:var(--text2)}
+.alltime .at-item strong{color:var(--text);font-weight:700}
+.alltime .at-item .at-val{color:var(--green);font-weight:800}
+.alltime .at-item .at-val.gold{color:var(--gold)}.alltime .at-item .at-val.purple{color:var(--purple)}
+
+/* ========== STAT CARDS ========== */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin:12px 0}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 12px;text-align:center;transition:transform .2s,border-color .3s}
+.stat:hover{transform:translateY(-2px);border-color:var(--accent)}
+.stat .label{font-size:.68em;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);margin-bottom:5px}
+.stat .value{font-size:1.8em;font-weight:800}
+.stat .value.green{color:var(--green)}.stat .value.gold{color:var(--gold)}
+.stat .value.red{color:var(--red)}.stat .value.blue{color:var(--blue)}
+
+/* ========== PROGRESS ========== */
+.progress-section{margin:14px 0}
+.progress-header{display:flex;justify-content:space-between;margin-bottom:5px}
+.progress-header .label,.progress-header .count{font-size:.8em}
+.progress-header .label{color:var(--text2)}.progress-header .count{color:var(--green);font-weight:700}
+.progress-track{height:12px;background:var(--border);border-radius:6px;overflow:hidden}
+.progress-fill{height:100%;border-radius:6px;transition:width .6s cubic-bezier(.22,1,.36,1);position:relative}
+.progress-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);animation:shimmer 2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+/* ========== SECTIONS ========== */
+.section-title{font-size:1.02em;font-weight:700;color:var(--text);margin:22px 0 10px;padding-left:12px;border-left:3px solid var(--accent);display:flex;align-items:center;gap:8px}
+
+/* Week Tabs */
+.week-tabs{display:flex;gap:6px;margin-bottom:12px}
+.week-tab{flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s;font-size:.8em;font-weight:600}
+.week-tab:hover{border-color:var(--blue)}
+.week-tab.active{background:var(--blue-dim);border-color:var(--blue);color:var(--blue)}
+.week-tab .wk-num{font-size:1em}.week-tab .wk-label{font-size:.63em;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.week-tab.completed .wk-label{color:var(--green)}.week-tab.failed .wk-label{color:var(--red)}
+
+/* Day Grid */
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:14px}
+.day-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 7px;text-align:center;cursor:pointer;transition:all .25s;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.day-card:hover{transform:translateY(-3px);border-color:var(--blue);box-shadow:0 4px 20px rgba(68,138,255,.15)}
+.day-card .day-num{font-size:.68em;color:var(--text3);font-weight:600;margin-bottom:2px}
+.day-card .day-icon{font-size:1.6em;margin:2px 0}.day-card .day-dist{font-size:.7em;color:var(--text2);margin-top:2px}
+.day-card .day-earn{font-size:.76em;font-weight:700;margin-top:2px}.day-card .day-rate{font-size:.56em;color:var(--text3);margin-top:1px}
+.day-card.success{border-color:var(--green);background:linear-gradient(135deg,var(--card),var(--green-dim))}
+.day-card.success .day-earn{color:var(--green)}
+.day-card.fail{border-color:var(--red);background:linear-gradient(135deg,var(--card),var(--red-dim))}
+.day-card.fail .day-earn{color:var(--red)}
+.day-card.dropped{border-color:var(--gold);background:linear-gradient(135deg,var(--card),var(--gold-dim))}
+.day-card.dropped .day-earn{color:var(--gold)}
+.day-card.empty .day-icon{color:var(--text3)}
+
+/* Week Summary Bar */
+.week-summary{display:flex;gap:9px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 16px;margin-bottom:18px;flex-wrap:wrap}
+.week-summary .ws-item{display:flex;flex-direction:column;align-items:center;min-width:65px}
+.week-summary .ws-item .ws-label{font-size:.6em;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:2px}
+.week-summary .ws-item .ws-val{font-size:1.15em;font-weight:700}
+.week-summary .ws-divider{width:1px;height:30px;background:var(--border)}
+.ws-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.7em;font-weight:700;letter-spacing:.5px}
+.ws-badge.levelup{background:var(--green-dim);color:var(--green)}
+.ws-badge.reset{background:var(--red-dim);color:var(--red)}
+.ws-badge.inprog{background:var(--blue-dim);color:var(--blue)}
+.ws-badge.pending{background:var(--border);color:var(--text3)}
+
+/* Rate Schedule */
+.rates{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:10px 0 14px}
+.rate-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;transition:border-color .3s}
+.rate-card.active-rate{border-color:var(--gold);box-shadow:0 0 15px var(--gold-dim)}
+.rate-card .rc-level{font-size:.66em;text-transform:uppercase;letter-spacing:1px;color:var(--text2)}
+.rate-card .rc-badge{font-size:1.4em;margin:4px 0}.rate-card .rc-amount{font-size:1.2em;font-weight:800;color:var(--gold)}
+.rate-card .rc-per{font-size:.66em;color:var(--text3)}
+
+/* History Table */
+.history-table{width:100%;border-collapse:separate;border-spacing:0;margin:10px 0 22px}
+.history-table th{font-size:.68em;text-transform:uppercase;letter-spacing:1px;color:var(--text2);padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.history-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:.85em}
+.history-table tr:hover td{background:var(--card)}
+.history-table .ht-label{font-weight:600;color:var(--text)}.history-table .ht-green{color:var(--green);font-weight:700}
+.history-table .ht-gold{color:var(--gold)}.history-table .ht-current{color:var(--blue);font-weight:600}
+.history-total td{border-top:2px solid var(--green);font-weight:700;color:var(--green);font-size:.9em}
+
+/* Rules */
+.rules{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin:10px 0 24px}
+.rules p{font-size:.8em;color:var(--text2);margin:4px 0;padding-left:8px}
+.rules p::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:10px;vertical-align:middle}
+
+/* ========== MODALS ========== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:360px;text-align:center;animation:modalIn .3s;max-height:90vh;overflow-y:auto}
+@keyframes modalIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.modal h3{font-size:1.1em;margin-bottom:4px}.modal .modal-sub{color:var(--text2);font-size:.8em;margin-bottom:16px}
+.modal input[type=number],.modal input[type=text]{width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1em;text-align:center;outline:none;transition:border-color .2s;margin-bottom:6px}
+.modal input:focus{border-color:var(--blue)}
+.modal .btn-row{display:flex;gap:8px;margin-top:10px}
+.modal button{flex:1;padding:10px;border:none;border-radius:10px;font-size:.85em;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-run{background:var(--green);color:#000}.btn-run:hover{filter:brightness(1.15)}
+.btn-rest{background:var(--red-dim);color:var(--red);border:1px solid var(--red)!important}
+.btn-rest:hover{background:var(--red);color:#fff}
+.btn-cancel{background:var(--border);color:var(--text2)}.btn-cancel:hover{background:var(--text3)}
+.btn-clear{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold)!important;font-size:.76em;padding:7px}
+.btn-clear:hover{background:var(--gold);color:#000}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid var(--red)!important;font-size:.76em;padding:7px}
+.btn-danger:hover{background:var(--red);color:#fff}
+
+/* Emoji picker */
+.emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:10px 0}
+.emoji-opt{font-size:1.6em;padding:8px;border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s;background:transparent;text-align:center}
+.emoji-opt:hover{border-color:var(--blue);transform:scale(1.1)}
+.emoji-opt.selected{border-color:var(--gold);background:var(--gold-dim)}
+.color-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:10px 0}
+.color-opt{width:100%;aspect-ratio:1;border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s}
+.color-opt:hover{transform:scale(1.1)}.color-opt.selected{border-color:var(--text);box-shadow:0 0 10px currentColor}
+
+/* Toast & Confetti */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:linear-gradient(135deg,var(--green-dim),var(--card));border:1px solid var(--green);border-radius:14px;padding:12px 22px;z-index:150;font-weight:700;font-size:.88em;transition:transform .5s cubic-bezier(.22,1,.36,1);pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast .toast-emoji{font-size:1.1em;margin-right:5px}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:200}
+.confetti-piece{position:absolute;width:10px;height:10px;top:-10px;animation:confettiFall 3s forwards}
+@keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(100vh) rotate(720deg)}}
+
+.footer{text-align:center;padding:14px;color:var(--text3);font-size:.7em}
+#file-input{display:none}
+
+@media(max-width:768px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .day-grid{grid-template-columns:repeat(4,1fr)}
+  .rates{grid-template-columns:repeat(2,1fr)}
+  .profile-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- ========== HOME VIEW ========== -->
+  <div id="view-home">
+    <div class="home-header">
+      <h1>RUN REWARD TRACKER</h1>
+      <div class="sub">Choose your runner</div>
+    </div>
+    <div class="home-bar">
+      <button class="home-bar-btn load" onclick="document.getElementById('file-input').click()">📥 Load Data</button>
+      <button class="home-bar-btn save" onclick="exportData()">💾 Save Data</button>
+    </div>
+    <div class="profile-grid" id="profile-grid"></div>
+    <div class="footer">Run Reward Tracker &middot; Family Edition &middot; Remember to 💾 Save</div>
+  </div>
+
+  <!-- ========== DASHBOARD VIEW ========== -->
+  <div id="view-dashboard" class="hidden">
+    <div class="topbar">
+      <button class="topbar-btn back" onclick="goHome()">← Runners</button>
+      <select id="month-select" onchange="switchMonth(this.value)"></select>
+      <div class="spacer"></div>
+      <button class="topbar-btn save" onclick="exportData()">💾 Save</button>
+      <button class="topbar-btn newmonth" onclick="openNewMonthModal()">➕ New Cycle</button>
+    </div>
+    <div class="header">
+      <h1 id="dash-title" style="background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">RUN REWARD TRACKER</h1>
+      <div class="sub" id="dash-sub">28-Day Cycles &middot; <span>$560</span> max per cycle</div>
+      <div class="runner-name" id="runner-name" style="color:var(--accent)"></div>
+    </div>
+    <div class="alltime" id="alltime"></div>
+    <div class="stats" id="stats"></div>
+    <div class="progress-section">
+      <div class="progress-header">
+        <span class="label">This Cycle: Progress to 20 Runs</span>
+        <span class="count" id="progress-count">0 / 20</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+    <div class="section-title">📅 Daily Log</div>
+    <div class="week-tabs" id="week-tabs"></div>
+    <div id="week-summary"></div>
+    <div class="day-grid" id="day-grid"></div>
+    <div class="section-title">💰 Rate Schedule</div>
+    <div class="rates" id="rates"></div>
+    <div class="section-title">📋 Rules</div>
+    <div class="rules">
+      <p>Run at least 2.0 miles to count as a success</p>
+      <p>2 rest days (misses) allowed per week — non-rolling</p>
+      <p>Rate drops to $4 immediately once you hit 3+ misses in a week</p>
+      <p>5+ runs in a week = Level Up next week | Fewer than 5 = Reset to Level 1</p>
+      <p>Each new monthly cycle resets to Level 1 ($4/run)</p>
+    </div>
+    <div class="section-title" id="history-title" class="hidden">📊 History</div>
+    <table class="history-table hidden" id="history-table"></table>
+    <div class="footer">Click any day to log &middot; Remember to 💾 Save</div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".json" onchange="importData(this)">
+
+<!-- Day Entry Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Day 1</h3>
+    <div class="modal-sub" id="modal-sub">Week 1 · Level 1</div>
+    <div class="btn-row" style="margin-bottom:10px">
+      <button class="btn-run" onclick="logRun()" style="font-size:1.05em;padding:14px">🏃 Ran</button>
+      <button class="btn-rest" onclick="logRest()" style="font-size:1.05em;padding:14px">😴 Rest Day</button>
+    </div>
+    <div style="font-size:.7em;color:var(--text3);margin-bottom:4px;text-align:left">Distance (optional)</div>
+    <input type="number" id="modal-input" placeholder="Miles (optional)" step="0.01" min="0">
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()" style="flex:1">Cancel</button></div>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn-clear" onclick="clearDay()" style="flex:1">Clear Day</button>
+      <button class="btn-danger" onclick="clearWeek()" style="flex:1">Clear Week</button>
+    </div>
+    <div class="btn-row"><button class="btn-danger" onclick="clearAllDays()" style="flex:1;opacity:.7">Clear Entire Cycle</button></div>
+  </div>
+</div>
+
+<!-- New Cycle Modal -->
+<div class="modal-overlay" id="newmonth-overlay">
+  <div class="modal">
+    <h3>Start New Cycle</h3>
+    <div class="modal-sub">Pick a Sunday to begin Week 1. Archives current cycle, starts fresh at Level 1.</div>
+    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Start Sunday</div>
+    <input type="date" id="newmonth-date" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1em;text-align:center;outline:none;margin-bottom:6px">
+    <div id="newmonth-warn" style="font-size:.72em;color:var(--red);min-height:18px;margin-bottom:4px"></div>
+    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Cycle Label (optional)</div>
+    <input type="text" id="newmonth-name" placeholder="Auto-generated from dates">
+    <div class="btn-row">
+      <button class="btn-run" onclick="createNewMonth()">Start</button>
+      <button class="btn-cancel" onclick="closeNewMonthModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Runner Modal -->
+<div class="modal-overlay" id="addrunner-overlay">
+  <div class="modal">
+    <h3>Add Runner</h3>
+    <div class="modal-sub">Pick a name, avatar, and color</div>
+    <input type="text" id="runner-input" placeholder="Name">
+    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Avatar</div>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Color</div>
+    <div class="color-grid" id="color-grid"></div>
+    <div class="btn-row">
+      <button class="btn-run" onclick="addRunner()">Add Runner</button>
+      <button class="btn-cancel" onclick="closeAddRunner()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Runner Modal -->
+<div class="modal-overlay" id="editrunner-overlay">
+  <div class="modal">
+    <h3>Edit Runner</h3>
+    <div class="modal-sub" id="edit-runner-sub"></div>
+    <input type="text" id="edit-runner-name" placeholder="Name">
+    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Avatar</div>
+    <div class="emoji-grid" id="edit-emoji-grid"></div>
+    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Color</div>
+    <div class="color-grid" id="edit-color-grid"></div>
+    <div class="btn-row">
+      <button class="btn-run" onclick="saveRunnerEdit()">Save</button>
+      <button class="btn-cancel" onclick="closeEditRunner()">Cancel</button>
+    </div>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn-danger" id="delete-runner-btn" onclick="deleteRunner()" style="flex:1">Delete Runner</button>
+    </div>
+    <div id="delete-confirm" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--red);border-radius:10px;background:var(--red-dim)">
+      <div style="font-size:.82em;color:var(--red);margin-bottom:8px;font-weight:600">Are you sure? This deletes all their data permanently.</div>
+      <div class="btn-row">
+        <button class="btn-danger" onclick="confirmDeleteRunner()" style="flex:1">Yes, Delete</button>
+        <button class="btn-cancel" onclick="cancelDeleteRunner()" style="flex:1">No, Keep</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-emoji"></span><span id="toast-text"></span></div>
+<div class="confetti" id="confetti"></div>
+
+<script>
+// ==================== CONSTANTS ====================
+const RATES = [0, 4, 12, 24, 40];
+const BADGES = ['', '🥉', '🥈', '🥇', '💎'];
+const RATE_LABELS = ['', 'Bronze', 'Silver', 'Gold', 'Diamond'];
+const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAY_LABELS_FULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const AVATARS = ['🏃','🏃‍♀️','⚡','🔥','🚀','💪','🌟','🦅','🐆','🎯','👟','🏆','🦁','💃','👑','🌸','🦋','🧚‍♀️'];
+const COLORS = [
+  {name:'Green',val:'#00e676',dim:'#00e67633'},
+  {name:'Blue',val:'#448aff',dim:'#448aff33'},
+  {name:'Purple',val:'#bb86fc',dim:'#bb86fc33'},
+  {name:'Cyan',val:'#00e5ff',dim:'#00e5ff33'},
+  {name:'Orange',val:'#ff9100',dim:'#ff910033'},
+  {name:'Pink',val:'#ff4081',dim:'#ff408133'}
+];
+
+// ==================== DATA MODEL ====================
+let data = { profiles: [] };
+let activeProfileIdx = null;
+let activeWeek = 1;
+let modalDay = null;
+let selectedEmoji = AVATARS[0];
+let selectedColor = 0;
+
+function createProfile(name, emoji, colorIdx) {
+  return {
+    id: Date.now().toString(),
+    name: name,
+    emoji: emoji || AVATARS[0],
+    colorIdx: colorIdx || 0,
+    months: [createMonth()],
+    activeMonthIdx: 0
+  };
+}
+
+function createMonth(label, startDate) {
+  const now = new Date();
+  // startDate should be a Sunday — either passed in or find next Sunday
+  let sd = startDate ? new Date(startDate + 'T00:00:00') : findNextSunday(now);
+  return {
+    id: now.getTime().toString(),
+    label: label || formatCycleLabel(sd),
+    startDate: sd.toISOString().slice(0, 10),
+    startedAt: now.toISOString(),
+    days: Array.from({ length: 28 }, (_, i) => ({
+      day: i + 1, week: Math.floor(i / 7) + 1, distance: null, logged: false, ranToday: false
+    }))
+  };
+}
+function findNextSunday(d) {
+  const r = new Date(d); r.setHours(0,0,0,0);
+  const dow = r.getDay(); // 0=Sun
+  if (dow !== 0) r.setDate(r.getDate() + (7 - dow));
+  return r;
+}
+function formatCycleLabel(sd) {
+  const end = new Date(sd); end.setDate(end.getDate() + 27);
+  const opts = { month: 'short', day: 'numeric' };
+  return sd.toLocaleDateString('en-US', opts) + ' – ' + end.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
+}
+function getCycleDate(m, dayNum) {
+  if (!m.startDate) return null;
+  const sd = new Date(m.startDate + 'T00:00:00');
+  sd.setDate(sd.getDate() + dayNum - 1);
+  return sd;
+}
+
+function cp() { return activeProfileIdx !== null ? data.profiles[activeProfileIdx] : null; }
+function cm() { const p = cp(); return p ? p.months[p.activeMonthIdx] : null; }
+function md(m) { return m ? m.days : []; }
+
+// ==================== ALGORITHM ====================
+function isSuccess(d) { return d.logged && d.ranToday === true; }
+function isMiss(d) { return d.logged && !d.ranToday; }
+function getWeekDays(m, wk) { return md(m).filter(d => d.week === wk); }
+
+function getWeekLevel(m, wk) {
+  if (wk === 1) return 1;
+  const prevSuccesses = getWeekDays(m, wk - 1).filter(isSuccess).length;
+  const prevLevel = getWeekLevel(m, wk - 1);
+  return prevSuccesses >= 5 ? Math.min(prevLevel + 1, 4) : 1;
+}
+function getWeekStartRate(m, wk) { return RATES[getWeekLevel(m, wk)]; }
+
+function getCumulativeMisses(m, dayObj) {
+  let misses = 0;
+  for (const d of getWeekDays(m, dayObj.week)) {
+    if (d.day > dayObj.day) break;
+    if (isMiss(d)) misses++;
+  }
+  return misses;
+}
+function getEffectiveRate(m, dayObj) {
+  if (!dayObj.logged) return null;
+  return getCumulativeMisses(m, dayObj) > 2 ? 4 : getWeekStartRate(m, dayObj.week);
+}
+function getDayEarnings(m, dayObj) { return isSuccess(dayObj) ? getEffectiveRate(m, dayObj) : 0; }
+function getMonthBank(m) { return md(m).reduce((s, d) => s + getDayEarnings(m, d), 0); }
+function getMonthRuns(m) { return md(m).filter(isSuccess).length; }
+function getMonthMisses(m) { return md(m).filter(isMiss).length; }
+
+function getWeekStatus(m, wk) {
+  const wd = getWeekDays(m, wk);
+  const logged = wd.filter(d => d.logged).length;
+  if (logged === 0) return 'pending';
+  if (logged < 7) return 'inprog';
+  return wd.filter(isSuccess).length >= 5 ? 'levelup' : 'reset';
+}
+function getCurrentWeek(m) {
+  for (let w = 4; w >= 1; w--) if (getWeekDays(m, w).some(d => d.logged)) return w;
+  return 1;
+}
+function getHighestLevel(m) {
+  let h = 1; for (let w = 1; w <= 4; w++) h = Math.max(h, getWeekLevel(m, w)); return h;
+}
+function pBank(p) { return p.months.reduce((s, m) => s + getMonthBank(m), 0); }
+function pRuns(p) { return p.months.reduce((s, m) => s + getMonthRuns(m), 0); }
+
+// ==================== PERSISTENCE ====================
+function migrateRanToday(profiles) {
+  // Add ranToday field to old data that only had distance
+  profiles.forEach(p => {
+    p.months.forEach(m => {
+      m.days.forEach(d => {
+        if (d.logged && d.ranToday === undefined) {
+          d.ranToday = d.distance !== null && d.distance >= 2.0;
+        }
+      });
+    });
+  });
+}
+function saveToLocal() {
+  try { localStorage.setItem('runRewardData_v3', JSON.stringify(data)); } catch(e) {}
+}
+function loadFromLocal() {
+  try {
+    const s = localStorage.getItem('runRewardData_v3');
+    if (s) { data = JSON.parse(s); migrateRanToday(data.profiles); return true; }
+    // migrate v2
+    const v2 = localStorage.getItem('runRewardData_v2');
+    if (v2) {
+      const old = JSON.parse(v2);
+      if (old.months) {
+        data = { profiles: [{ id: '1', name: 'Runner', emoji: '🏃', colorIdx: 0, months: old.months, activeMonthIdx: old.activeMonthIdx || 0 }] };
+        saveToLocal();
+        return true;
+      }
+    }
+  } catch(e) {}
+  return false;
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'run_reward_data.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  showToast('💾', 'Data saved! Place file on your NAS shared folder.');
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imp = JSON.parse(e.target.result);
+      if (imp.profiles && Array.isArray(imp.profiles)) {
+        data = imp; migrateRanToday(data.profiles);
+      } else if (imp.months && Array.isArray(imp.months)) {
+        // migrate v2 format
+        data = { profiles: [{ id: '1', name: 'Runner', emoji: '🏃', colorIdx: 0, months: imp.months, activeMonthIdx: imp.activeMonthIdx || 0 }] };
+      } else { showToast('❌', 'Invalid data file'); return; }
+      saveToLocal();
+      activeProfileIdx = null;
+      activeWeek = 1;
+      showView('home');
+      renderHome();
+      showToast('📥', `Loaded! ${data.profiles.length} runner(s) found.`);
+    } catch (err) { showToast('❌', 'Could not read file'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ==================== VIEW MANAGEMENT ====================
+function showView(v) {
+  document.getElementById('view-home').classList.toggle('hidden', v !== 'home');
+  document.getElementById('view-dashboard').classList.toggle('hidden', v !== 'dashboard');
+}
+
+function goHome() {
+  activeProfileIdx = null;
+  showView('home');
+  renderHome();
+}
+
+function openProfile(idx) {
+  activeProfileIdx = idx;
+  activeWeek = 1;
+  applyProfileColor();
+  showView('dashboard');
+  renderDashboard();
+}
+
+function applyProfileColor() {
+  const p = cp();
+  if (!p) return;
+  const c = COLORS[p.colorIdx] || COLORS[0];
+  document.documentElement.style.setProperty('--accent', c.val);
+  document.documentElement.style.setProperty('--accent-dim', c.dim);
+}
+
+// ==================== HOME RENDERING ====================
+function renderHome() {
+  let html = '';
+  data.profiles.forEach((p, i) => {
+    const c = COLORS[p.colorIdx] || COLORS[0];
+    const m = p.months[p.months.length - 1];
+    const bank = pBank(p);
+    const runs = pRuns(p);
+    const curBank = getMonthBank(m);
+    const curLevel = getHighestLevel(m);
+    html += `<div class="profile-tile" style="border-color:${c.val}" onclick="openProfile(${i})">
+      <span class="pt-badge" style="background:${c.dim};color:${c.val}">${p.months.length} cycle${p.months.length !== 1 ? 's' : ''}</span>
+      <span class="pt-emoji">${p.emoji}</span>
+      <div class="pt-name" style="color:${c.val}">${p.name}</div>
+      <div class="pt-stats">
+        <div class="pt-stat"><div class="pt-stat-val" style="color:var(--green)">$${bank}</div><div class="pt-stat-lbl">All-Time</div></div>
+        <div class="pt-stat"><div class="pt-stat-val" style="color:${c.val}">${runs}</div><div class="pt-stat-lbl">Total Runs</div></div>
+        <div class="pt-stat"><div class="pt-stat-val" style="color:var(--gold)">${BADGES[curLevel]} Lvl ${curLevel}</div><div class="pt-stat-lbl">Current</div></div>
+      </div>
+      <div style="margin-top:10px;font-size:.72em;color:var(--text3)">This cycle: $${curBank} earned</div>
+      <button onclick="event.stopPropagation();openEditRunner(${i})" style="position:absolute;top:10px;left:12px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:.9em;padding:4px">⚙️</button>
+    </div>`;
+  });
+  html += `<div class="profile-tile add-tile" onclick="openAddRunner()">
+    <span class="pt-emoji">➕</span>
+    <div class="pt-name">Add Runner</div>
+  </div>`;
+  document.getElementById('profile-grid').innerHTML = html;
+}
+
+// ==================== DASHBOARD RENDERING ====================
+function renderDashboard() {
+  const p = cp(); if (!p) return;
+  document.getElementById('runner-name').textContent = p.emoji + ' ' + p.name;
+  document.getElementById('dash-title').textContent = p.name + "'s Tracker";
+  const m0 = cm();
+  if (m0 && m0.startDate) {
+    const sd = new Date(m0.startDate + 'T00:00:00'), ed = new Date(sd); ed.setDate(ed.getDate() + 27);
+    const fmt = d => d.toLocaleDateString('en-US', {month:'short',day:'numeric'});
+    document.getElementById('dash-sub').innerHTML = fmt(sd) + ' – ' + fmt(ed) + ' &middot; <span>$560</span> max per cycle';
+  } else {
+    document.getElementById('dash-sub').innerHTML = '28-Day Cycle &middot; <span>$560</span> max per cycle';
+  }
+  renderMonthSelect();
+  renderAllTime();
+  renderStats();
+  renderProgress();
+  renderWeekTabs();
+  renderWeekSummary();
+  renderDayGrid();
+  renderRates();
+  renderHistory();
+}
+
+function renderMonthSelect() {
+  const p = cp();
+  const sel = document.getElementById('month-select');
+  sel.innerHTML = p.months.map((m, i) =>
+    `<option value="${i}" ${i === p.activeMonthIdx ? 'selected' : ''}>${m.label}${i === p.months.length - 1 ? ' (Current)' : ''}</option>`
+  ).join('');
+}
+
+function renderAllTime() {
+  const p = cp();
+  const bank = pBank(p);
+  const runs = pRuns(p);
+  const months = p.months.length;
+  let best = 0;
+  p.months.forEach(m => { const b = getMonthBank(m); if (b > best) best = b; });
+  document.getElementById('alltime').innerHTML = `
+    <div class="at-item">🏆 <strong>All-Time:</strong> <span class="at-val">$${bank}</span></div>
+    <div class="at-item">🏃 <span class="at-val purple">${runs}</span> runs</div>
+    <div class="at-item">📅 <span class="at-val gold">${months}</span> cycle${months !== 1 ? 's' : ''}</div>
+    ${months > 1 ? `<div class="at-item">⭐ Best: <span class="at-val">$${best}</span></div>` : ''}
+  `;
+}
+
+function renderStats() {
+  const m = cm(); if (!m) return;
+  const cw = getCurrentWeek(m), level = getWeekLevel(m, cw), rate = getWeekStartRate(m, cw);
+  const bank = getMonthBank(m), runs = getMonthRuns(m), left = Math.max(20 - runs, 0);
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="label">Current Week</div><div class="value blue">${cw}/4</div></div>
+    <div class="stat"><div class="label">Week Level</div><div class="value gold">${BADGES[level]} Lvl ${level}</div></div>
+    <div class="stat"><div class="label">Week Rate</div><div class="value gold">$${rate}</div></div>
+    <div class="stat"><div class="label">Cycle Bank</div><div class="value green">$${bank}</div></div>
+    <div class="stat"><div class="label">Cycle Runs</div><div class="value blue">${runs}</div></div>
+    <div class="stat"><div class="label">Runs Left</div><div class="value ${left <= 5 ? 'green' : 'red'}">${left}</div></div>
+  `;
+}
+
+function renderProgress() {
+  const m = cm(); const runs = m ? getMonthRuns(m) : 0;
+  document.getElementById('progress-fill').style.width = Math.min(runs / 20 * 100, 100) + '%';
+  document.getElementById('progress-fill').style.background = `linear-gradient(90deg,var(--accent),var(--gold))`;
+  document.getElementById('progress-count').textContent = runs + ' / 20';
+}
+
+function renderWeekTabs() {
+  const m = cm(); if (!m) return;
+  let html = '';
+  for (let w = 1; w <= 4; w++) {
+    const st = getWeekStatus(m, w), lv = getWeekLevel(m, w);
+    let cls = w === activeWeek ? 'active' : '';
+    if (st === 'levelup') cls += ' completed'; else if (st === 'reset') cls += ' failed';
+    let dateRange = '';
+    const wStart = getCycleDate(m, (w-1)*7+1), wEnd = getCycleDate(m, w*7);
+    if (wStart && wEnd) {
+      const fmt = d => (d.getMonth()+1) + '/' + d.getDate();
+      dateRange = `<div style="font-size:.55em;color:var(--text3);margin-top:1px">${fmt(wStart)} – ${fmt(wEnd)}</div>`;
+    }
+    html += `<div class="week-tab ${cls}" onclick="setWeek(${w})">
+      <div class="wk-num">${BADGES[lv]} Week ${w}</div>
+      ${dateRange}
+      <div class="wk-label">${st === 'levelup' ? 'Level Up!' : st === 'reset' ? 'Reset' : st === 'inprog' ? 'In Progress' : 'Upcoming'}</div>
+    </div>`;
+  }
+  document.getElementById('week-tabs').innerHTML = html;
+}
+
+function renderWeekSummary() {
+  const m = cm(); if (!m) return;
+  const wd = getWeekDays(m, activeWeek), level = getWeekLevel(m, activeWeek), rate = getWeekStartRate(m, activeWeek);
+  const runs = wd.filter(isSuccess).length, misses = wd.filter(isMiss).length;
+  const logged = wd.filter(d => d.logged).length, earnings = wd.reduce((s, d) => s + getDayEarnings(m, d), 0);
+  const st = getWeekStatus(m, activeWeek);
+  const badges = { levelup: '<span class="ws-badge levelup">LEVEL UP ↑</span>', reset: '<span class="ws-badge reset">RESET ↓</span>', inprog: '<span class="ws-badge inprog">IN PROGRESS</span>', pending: '<span class="ws-badge pending">UPCOMING</span>' };
+  document.getElementById('week-summary').innerHTML = `<div class="week-summary">
+    <div class="ws-item"><div class="ws-label">Level</div><div class="ws-val" style="color:var(--gold)">${BADGES[level]} ${level}</div></div><div class="ws-divider"></div>
+    <div class="ws-item"><div class="ws-label">Rate</div><div class="ws-val" style="color:var(--gold)">$${rate}</div></div><div class="ws-divider"></div>
+    <div class="ws-item"><div class="ws-label">Runs</div><div class="ws-val" style="color:var(--green)">${runs}</div></div><div class="ws-divider"></div>
+    <div class="ws-item"><div class="ws-label">Misses</div><div class="ws-val" style="color:${misses > 2 ? 'var(--red)' : 'var(--text)'}">${misses}</div></div><div class="ws-divider"></div>
+    <div class="ws-item"><div class="ws-label">Earned</div><div class="ws-val" style="color:var(--green)">$${earnings}</div></div><div class="ws-divider"></div>
+    <div class="ws-item"><div class="ws-label">Logged</div><div class="ws-val">${logged}/7</div></div><div class="ws-divider"></div>
+    <div class="ws-item">${badges[st]}</div>
+    ${logged > 0 ? '<div class="ws-divider"></div><div class="ws-item"><button onclick="clearWeekDirect()" style="padding:4px 10px;border-radius:8px;border:1px solid var(--red);background:var(--red-dim);color:var(--red);font-size:.7em;font-weight:600;cursor:pointer">🧹 Clear Week</button></div>' : ''}
+  </div>`;
+}
+
+function renderDayGrid() {
+  const m = cm(); if (!m) return;
+  let html = '';
+  getWeekDays(m, activeWeek).forEach((d, i) => {
+    let cls = 'empty', icon = '➕', distText = 'Tap to log', earnText = '', rateText = '';
+    if (d.logged) {
+      const rate = getEffectiveRate(m, d), cumM = getCumulativeMisses(m, d), dropped = rate < getWeekStartRate(m, d.week);
+      if (isSuccess(d)) {
+        cls = dropped ? 'dropped' : 'success'; icon = dropped ? '⚡' : '🏃';
+        distText = d.distance ? d.distance.toFixed(2) + ' mi' : 'Ran';
+        earnText = '+$' + getDayEarnings(m, d);
+        rateText = dropped ? '@ $4 (dropped)' : '@ $' + rate;
+      } else {
+        cls = 'fail'; icon = cumM > 2 ? '🚫' : '😴';
+        distText = 'Rest day';
+        earnText = '$0'; rateText = cumM > 2 ? 'Over limit!' : 'Miss ' + cumM + '/2';
+      }
+    }
+    const cd = getCycleDate(m, d.day);
+    const dateLabel = cd ? DAY_LABELS_FULL[cd.getDay()] + ' ' + (cd.getMonth()+1) + '/' + cd.getDate() : DAY_LABELS[i];
+    html += `<div class="day-card ${cls}" onclick="openModal(${d.day})">
+      <div class="day-num">${dateLabel} · Day ${d.day}</div>
+      <div class="day-icon">${icon}</div><div class="day-dist">${distText}</div>
+      <div class="day-earn">${earnText}</div><div class="day-rate">${rateText}</div>
+    </div>`;
+  });
+  document.getElementById('day-grid').innerHTML = html;
+}
+
+function renderRates() {
+  const m = cm(), curLvl = m ? getWeekLevel(m, getCurrentWeek(m)) : 1;
+  let html = '';
+  for (let l = 1; l <= 4; l++) {
+    html += `<div class="rate-card ${l === curLvl ? 'active-rate' : ''}">
+      <div class="rc-level">${RATE_LABELS[l]}</div><div class="rc-badge">${BADGES[l]}</div>
+      <div class="rc-amount">$${RATES[l]}</div><div class="rc-per">per run</div>
+    </div>`;
+  }
+  document.getElementById('rates').innerHTML = html;
+}
+
+function renderHistory() {
+  const p = cp(); if (!p || p.months.length <= 1) {
+    document.getElementById('history-title').style.display = 'none';
+    document.getElementById('history-table').style.display = 'none'; return;
+  }
+  document.getElementById('history-title').style.display = '';
+  document.getElementById('history-table').style.display = '';
+  let html = `<thead><tr><th>Cycle</th><th>Peak Level</th><th>Runs</th><th>Misses</th><th>Earned</th><th>Status</th></tr></thead><tbody>`;
+  p.months.forEach((m, i) => {
+    const runs = getMonthRuns(m), misses = getMonthMisses(m), bank = getMonthBank(m), peak = getHighestLevel(m);
+    const logged = md(m).filter(d => d.logged).length, isCur = i === p.months.length - 1;
+    const status = isCur ? '<span class="ht-current">Active</span>' : (logged === 28 ? '<span class="ht-green">Completed</span>' : '<span style="color:var(--text2)">Ended</span>');
+    const cycLabel = m.startDate ? m.label : m.label;
+    html += `<tr><td class="ht-label">${cycLabel}</td><td class="ht-gold">${BADGES[peak]} Lvl ${peak}</td><td>${runs}</td>
+      <td style="color:${misses > 8 ? 'var(--red)' : 'var(--text2)'}">${misses}</td><td class="ht-green">$${bank}</td><td>${status}</td></tr>`;
+  });
+  const tr = pRuns(p), tm = p.months.reduce((s, m) => s + getMonthMisses(m), 0), tb = pBank(p);
+  html += `</tbody><tfoot><tr class="history-total"><td>ALL TIME</td><td></td><td>${tr}</td><td>${tm}</td><td>$${tb}</td><td></td></tr></tfoot>`;
+  document.getElementById('history-table').innerHTML = html;
+}
+
+// ==================== INTERACTIONS ====================
+function setWeek(w) { activeWeek = w; renderDashboard(); }
+function switchMonth(idx) { cp().activeMonthIdx = parseInt(idx); activeWeek = 1; renderDashboard(); }
+
+function openModal(dayNum) {
+  modalDay = dayNum;
+  const m = cm(), d = md(m)[dayNum - 1], lv = getWeekLevel(m, d.week);
+  const cd = getCycleDate(m, dayNum);
+  const dateStr = cd ? cd.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}) + ' · ' : '';
+  document.getElementById('modal-title').textContent = dateStr + 'Day ' + dayNum;
+  document.getElementById('modal-sub').textContent = `Week ${d.week} · ${BADGES[lv]} Level ${lv} · $${getWeekStartRate(m, d.week)}/run`;
+  const inp = document.getElementById('modal-input');
+  inp.value = d.logged && d.distance ? d.distance : '';
+  inp.style.borderColor = '';
+  document.getElementById('modal-overlay').classList.add('show');
+  setTimeout(() => inp.focus(), 100);
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); modalDay = null; }
+
+function logRun() {
+  const inp = document.getElementById('modal-input'), dist = parseFloat(inp.value);
+  const m = cm(), d = md(m)[modalDay - 1];
+  d.ranToday = true;
+  d.distance = (!isNaN(dist) && dist > 0) ? dist : null;
+  d.logged = true; saveToLocal(); closeModal();
+  showToast('🏃', '+$' + getDayEarnings(m, d) + ' earned!');
+  checkWeekComplete(m, d.week); renderDashboard();
+}
+
+function logRest() {
+  const m = cm(), d = md(m)[modalDay - 1];
+  d.ranToday = false; d.distance = null; d.logged = true; saveToLocal(); closeModal();
+  showToast('😴', 'Rest day logged'); checkWeekComplete(m, d.week); renderDashboard();
+}
+
+function clearDay() {
+  const d = md(cm())[modalDay - 1]; d.distance = null; d.logged = false; d.ranToday = false;
+  saveToLocal(); closeModal(); renderDashboard();
+}
+function clearWeek() {
+  if (!confirm('Clear all data for Week ' + activeWeek + '?')) return;
+  getWeekDays(cm(), activeWeek).forEach(d => { d.distance = null; d.logged = false; d.ranToday = false; });
+  saveToLocal(); closeModal(); showToast('🧹', 'Week ' + activeWeek + ' cleared'); renderDashboard();
+}
+function clearWeekDirect() {
+  if (!confirm('Clear all data for Week ' + activeWeek + '?')) return;
+  getWeekDays(cm(), activeWeek).forEach(d => { d.distance = null; d.logged = false; d.ranToday = false; });
+  saveToLocal(); showToast('🧹', 'Week ' + activeWeek + ' cleared'); renderDashboard();
+}
+function clearAllDays() {
+  if (!confirm('Clear ALL days for this entire cycle?')) return;
+  md(cm()).forEach(d => { d.distance = null; d.logged = false; d.ranToday = false; });
+  activeWeek = 1; saveToLocal(); closeModal(); showToast('🧹', 'Cycle reset'); renderDashboard();
+}
+
+function checkWeekComplete(m, wk) {
+  if (getWeekDays(m, wk).filter(d => d.logged).length === 7) {
+    const st = getWeekStatus(m, wk);
+    if (st === 'levelup') setTimeout(() => { showToast('🎉', 'Week ' + wk + ' — LEVEL UP!'); fireConfetti(); }, 600);
+    else if (st === 'reset') setTimeout(() => showToast('💪', 'Week ' + wk + ' done — Reset. Keep going!'), 600);
+  }
+}
+
+function openNewMonthModal() {
+  const ns = findNextSunday(new Date());
+  document.getElementById('newmonth-date').value = ns.toISOString().slice(0, 10);
+  document.getElementById('newmonth-name').value = '';
+  document.getElementById('newmonth-warn').textContent = '';
+  document.getElementById('newmonth-overlay').classList.add('show');
+  // Warn if not a Sunday on change
+  document.getElementById('newmonth-date').onchange = function() {
+    const d = new Date(this.value + 'T00:00:00');
+    document.getElementById('newmonth-warn').textContent = d.getDay() !== 0 ? 'That is not a Sunday — weeks start on Sundays' : '';
+  };
+}
+function closeNewMonthModal() { document.getElementById('newmonth-overlay').classList.remove('show'); }
+function createNewMonth() {
+  const dateVal = document.getElementById('newmonth-date').value;
+  if (!dateVal) { document.getElementById('newmonth-warn').textContent = 'Please pick a start date'; return; }
+  const sd = new Date(dateVal + 'T00:00:00');
+  if (sd.getDay() !== 0) {
+    if (!confirm('The selected date is not a Sunday. Weeks are designed to start on Sunday. Continue anyway?')) return;
+  }
+  const customLabel = document.getElementById('newmonth-name').value.trim();
+  const label = customLabel || formatCycleLabel(sd);
+  const p = cp(); p.months.push(createMonth(label, dateVal)); p.activeMonthIdx = p.months.length - 1;
+  activeWeek = 1; saveToLocal(); closeNewMonthModal();
+  showToast('🚀', 'New cycle: ' + label); fireConfetti(); renderDashboard();
+}
+
+// ==================== PROFILE MANAGEMENT ====================
+function buildEmojiGrid(containerId, sel) {
+  document.getElementById(containerId).innerHTML = AVATARS.map(e =>
+    `<div class="emoji-opt ${e === sel ? 'selected' : ''}" onclick="pickEmoji(this,'${containerId}','${e}')">${e}</div>`
+  ).join('');
+}
+function buildColorGrid(containerId, sel) {
+  document.getElementById(containerId).innerHTML = COLORS.map((c, i) =>
+    `<div class="color-opt ${i === sel ? 'selected' : ''}" style="background:${c.val}" onclick="pickColor(this,'${containerId}',${i})"></div>`
+  ).join('');
+}
+function pickEmoji(el, cid, emoji) {
+  selectedEmoji = emoji;
+  document.querySelectorAll('#' + cid + ' .emoji-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function pickColor(el, cid, idx) {
+  selectedColor = idx;
+  document.querySelectorAll('#' + cid + ' .color-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function openAddRunner() {
+  selectedEmoji = AVATARS[0]; selectedColor = 0;
+  document.getElementById('runner-input').value = '';
+  buildEmojiGrid('emoji-grid', selectedEmoji);
+  buildColorGrid('color-grid', selectedColor);
+  document.getElementById('addrunner-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('runner-input').focus(), 100);
+}
+function closeAddRunner() { document.getElementById('addrunner-overlay').classList.remove('show'); }
+function addRunner() {
+  const name = document.getElementById('runner-input').value.trim();
+  if (!name) { document.getElementById('runner-input').style.borderColor = 'var(--red)'; return; }
+  const p = createProfile(name, selectedEmoji, selectedColor);
+  data.profiles.push(p);
+  saveToLocal(); closeAddRunner();
+  showToast('🎉', name + ' added! Set a start Sunday in New Cycle.'); fireConfetti(); renderHome();
+}
+
+let editingProfileIdx = null;
+function openEditRunner(idx) {
+  editingProfileIdx = idx;
+  const p = data.profiles[idx];
+  selectedEmoji = p.emoji; selectedColor = p.colorIdx;
+  document.getElementById('edit-runner-name').value = p.name;
+  document.getElementById('edit-runner-sub').textContent = p.emoji + ' ' + p.name;
+  buildEmojiGrid('edit-emoji-grid', selectedEmoji);
+  buildColorGrid('edit-color-grid', selectedColor);
+  document.getElementById('delete-confirm').style.display = 'none';
+  document.getElementById('delete-runner-btn').style.display = '';
+  document.getElementById('editrunner-overlay').classList.add('show');
+}
+function closeEditRunner() { document.getElementById('editrunner-overlay').classList.remove('show'); editingProfileIdx = null; }
+function saveRunnerEdit() {
+  const name = document.getElementById('edit-runner-name').value.trim();
+  if (!name) return;
+  const p = data.profiles[editingProfileIdx];
+  p.name = name; p.emoji = selectedEmoji; p.colorIdx = selectedColor;
+  saveToLocal(); closeEditRunner(); showToast('✅', 'Updated!'); renderHome();
+}
+function deleteRunner() {
+  document.getElementById('delete-runner-btn').style.display = 'none';
+  document.getElementById('delete-confirm').style.display = 'block';
+}
+function confirmDeleteRunner() {
+  const p = data.profiles[editingProfileIdx];
+  data.profiles.splice(editingProfileIdx, 1);
+  document.getElementById('delete-confirm').style.display = 'none';
+  document.getElementById('delete-runner-btn').style.display = '';
+  saveToLocal(); closeEditRunner(); showToast('🗑️', p.name + ' removed'); renderHome();
+}
+function cancelDeleteRunner() {
+  document.getElementById('delete-confirm').style.display = 'none';
+  document.getElementById('delete-runner-btn').style.display = '';
+}
+
+// ==================== EFFECTS ====================
+function showToast(emoji, text) {
+  const t = document.getElementById('toast');
+  t.querySelector('.toast-emoji').textContent = emoji;
+  document.getElementById('toast-text').textContent = text;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function fireConfetti() {
+  const c = document.getElementById('confetti');
+  const cols = ['#00e676','#ffd740','#448aff','#ff1744','#e040fb','#00e5ff'];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div'); p.className = 'confetti-piece';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = cols[Math.floor(Math.random() * cols.length)];
+    p.style.animationDelay = Math.random() + 's';
+    p.style.animationDuration = (2 + Math.random() * 2) + 's';
+    p.style.borderRadius = Math.random() > .5 ? '50%' : '2px';
+    const sz = 6 + Math.random() * 8; p.style.width = sz + 'px'; p.style.height = sz + 'px';
+    c.appendChild(p); setTimeout(() => p.remove(), 4000);
+  }
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeNewMonthModal(); closeAddRunner(); closeEditRunner(); }
+  // Enter in distance field triggers logRun
+  if (e.key === 'Enter' && modalDay && document.activeElement === document.getElementById('modal-input')) logRun();
+});
+
+// ==================== INIT ====================
+loadFromLocal();
+if (data.profiles.length === 0) {
+  // First time — show home with empty grid, user adds runners
+}
+showView('home');
+renderHome();
+</script>
+</body>
+</html>
