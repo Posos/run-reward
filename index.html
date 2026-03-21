@@ -19,6 +19,79 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 .container{max-width:1100px;margin:0 auto}
 .hidden{display:none!important}
 
+/* ========== PIN OVERLAY ========== */
+#pin-overlay {
+  position:fixed;inset:0;z-index:9999;
+  background:#0a0e17;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;
+  transition:opacity 0.4s ease;
+}
+#pin-overlay.fade-out { opacity:0; pointer-events:none; }
+.pin-logo { font-size:3em; margin-bottom:8px; }
+.pin-title { font-size:1.4em; font-weight:800; color:var(--green); margin-bottom:4px; }
+.pin-subtitle { font-size:0.85em; color:var(--text2); margin-bottom:32px; }
+.pin-dots {
+  display:flex; gap:14px; margin-bottom:28px;
+}
+.pin-dot {
+  width:18px; height:18px; border-radius:50%;
+  border:2px solid var(--border);
+  background:transparent;
+  transition:all 0.15s;
+}
+.pin-dot.filled { background:var(--green); border-color:var(--green); }
+.pin-dot.error { background:var(--red); border-color:var(--red); }
+.pin-keypad {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  width:100%;max-width:280px;
+}
+.pin-key {
+  aspect-ratio:1;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
+  font-size:1.4em;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.12s;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+.pin-key:active, .pin-key.pressed { background:var(--green-dim); border-color:var(--green); transform:scale(0.92); }
+.pin-key.backspace { font-size:1em; color:var(--text2); }
+.pin-key.backspace:active { background:var(--red-dim); border-color:var(--red); }
+.pin-key.empty { visibility:hidden; }
+.pin-error-msg {
+  margin-top:20px; color:var(--red); font-size:0.82em; font-weight:600;
+  min-height:20px; text-align:center;
+}
+.pin-lockout-msg {
+  margin-top:20px; color:var(--gold); font-size:0.85em; font-weight:600;
+  text-align:center; line-height:1.5;
+}
+
+/* ========== LOADING OVERLAY ========== */
+#loading-overlay {
+  position:fixed;inset:0;z-index:500;
+  background:rgba(10,14,23,0.85);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;
+}
+#loading-overlay.hidden { display:none; }
+.loading-spinner {
+  width:40px;height:40px;border-radius:50%;
+  border:3px solid var(--border);
+  border-top-color:var(--green);
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { color:var(--text2); font-size:0.85em; }
+
 /* ========== HOME / LANDING PAGE ========== */
 .home-header{text-align:center;padding:40px 0 10px}
 .home-header h1{font-size:2.6em;font-weight:800;background:linear-gradient(135deg,var(--green),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px}
@@ -203,6 +276,41 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 </head>
 <body>
 
+<!-- ========== PIN OVERLAY ========== -->
+<div id="pin-overlay">
+  <div class="pin-logo">🏃</div>
+  <div class="pin-title">RUN REWARD TRACKER</div>
+  <div class="pin-subtitle">Enter PIN to continue</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-keypad" id="pin-keypad">
+    <button class="pin-key" data-digit="1" onclick="pinKey(1)">1</button>
+    <button class="pin-key" data-digit="2" onclick="pinKey(2)">2</button>
+    <button class="pin-key" data-digit="3" onclick="pinKey(3)">3</button>
+    <button class="pin-key" data-digit="4" onclick="pinKey(4)">4</button>
+    <button class="pin-key" data-digit="5" onclick="pinKey(5)">5</button>
+    <button class="pin-key" data-digit="6" onclick="pinKey(6)">6</button>
+    <button class="pin-key" data-digit="7" onclick="pinKey(7)">7</button>
+    <button class="pin-key" data-digit="8" onclick="pinKey(8)">8</button>
+    <button class="pin-key" data-digit="9" onclick="pinKey(9)">9</button>
+    <button class="pin-key empty" aria-hidden="true"></button>
+    <button class="pin-key" data-digit="0" onclick="pinKey(0)">0</button>
+    <button class="pin-key backspace" onclick="pinBackspace()">⌫</button>
+  </div>
+  <div class="pin-error-msg" id="pin-error"></div>
+  <div class="pin-lockout-msg hidden" id="pin-lockout"></div>
+</div>
+
+<!-- ========== LOADING OVERLAY ========== -->
+<div id="loading-overlay" class="hidden">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Loading data…</div>
+</div>
+
 <div class="container">
   <!-- ========== HOME VIEW ========== -->
   <div id="view-home">
@@ -211,11 +319,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
       <div class="sub">Choose your runner</div>
     </div>
     <div class="home-bar">
-      <button class="home-bar-btn load" onclick="document.getElementById('file-input').click()">📥 Load Data</button>
-      <button class="home-bar-btn save" onclick="exportData()">💾 Save Data</button>
+      <button class="home-bar-btn load" onclick="document.getElementById('file-input').click()">📥 Load Backup</button>
+      <button class="home-bar-btn save" onclick="exportData()">💾 Backup Data</button>
     </div>
     <div class="profile-grid" id="profile-grid"></div>
-    <div class="footer">Run Reward Tracker &middot; Family Edition &middot; Remember to 💾 Save</div>
+    <div class="footer">Run Reward Tracker &middot; Family Edition &middot; Data synced to cloud ☁️</div>
   </div>
 
   <!-- ========== DASHBOARD VIEW ========== -->
@@ -224,7 +332,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
       <button class="topbar-btn back" onclick="goHome()">← Runners</button>
       <select id="month-select" onchange="switchMonth(this.value)"></select>
       <div class="spacer"></div>
-      <button class="topbar-btn save" onclick="exportData()">💾 Save</button>
+      <button class="topbar-btn save" onclick="syncToCloud()">☁️ Sync</button>
       <button class="topbar-btn newmonth" onclick="openNewMonthModal()">➕ New Cycle</button>
     </div>
     <div class="header">
@@ -257,7 +365,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
     </div>
     <div class="section-title" id="history-title" class="hidden">📊 History</div>
     <table class="history-table hidden" id="history-table"></table>
-    <div class="footer">Click any day to log &middot; Remember to 💾 Save</div>
+    <div class="footer">Click any day to log &middot; Data syncs automatically ☁️</div>
   </div>
 </div>
 
@@ -348,6 +456,169 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 <div class="confetti" id="confetti"></div>
 
 <script>
+// ==================== PIN GATE ====================
+const PIN_CODE = '6587';
+let pinBuffer = '';
+let pinAttempts = 0;
+const MAX_ATTEMPTS = 3;
+const LOCKOUT_MS = 5 * 60 * 1000;
+
+function checkPinSession() {
+  if (sessionStorage.getItem('pin_unlocked') === 'true') {
+    document.getElementById('pin-overlay').style.display = 'none';
+    return true;
+  }
+  // Check lockout
+  const lockUntil = parseInt(sessionStorage.getItem('pin_lock_until') || '0');
+  if (Date.now() < lockUntil) {
+    startLockoutDisplay(lockUntil);
+    disablePinKeypad(true);
+    return false;
+  }
+  return false;
+}
+
+function pinKey(digit) {
+  const lockUntil = parseInt(sessionStorage.getItem('pin_lock_until') || '0');
+  if (Date.now() < lockUntil) return;
+  if (pinBuffer.length >= 4) return;
+
+  pinBuffer += digit;
+  updatePinDots();
+
+  if (pinBuffer.length === 4) {
+    setTimeout(checkPin, 120);
+  }
+}
+
+function pinBackspace() {
+  const lockUntil = parseInt(sessionStorage.getItem('pin_lock_until') || '0');
+  if (Date.now() < lockUntil) return;
+  if (pinBuffer.length > 0) {
+    pinBuffer = pinBuffer.slice(0, -1);
+    updatePinDots();
+  }
+}
+
+function updatePinDots(state) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.className = 'pin-dot';
+    if (state === 'error') dot.classList.add('error');
+    else if (i < pinBuffer.length) dot.classList.add('filled');
+  }
+}
+
+function checkPin() {
+  if (pinBuffer === PIN_CODE) {
+    sessionStorage.setItem('pin_unlocked', 'true');
+    sessionStorage.removeItem('pin_attempts');
+    sessionStorage.removeItem('pin_lock_until');
+    updatePinDots(); // clear
+    const overlay = document.getElementById('pin-overlay');
+    overlay.classList.add('fade-out');
+    setTimeout(() => { overlay.style.display = 'none'; }, 400);
+  } else {
+    pinAttempts++;
+    sessionStorage.setItem('pin_attempts', pinAttempts);
+    updatePinDots('error');
+    document.getElementById('pin-error').textContent = 
+      pinAttempts >= MAX_ATTEMPTS ? '' : `Wrong PIN. ${MAX_ATTEMPTS - pinAttempts} attempt${MAX_ATTEMPTS - pinAttempts !== 1 ? 's' : ''} left.`;
+
+    if (pinAttempts >= MAX_ATTEMPTS) {
+      const lockUntil = Date.now() + LOCKOUT_MS;
+      sessionStorage.setItem('pin_lock_until', lockUntil);
+      disablePinKeypad(true);
+      startLockoutDisplay(lockUntil);
+    }
+
+    setTimeout(() => {
+      pinBuffer = '';
+      updatePinDots();
+      if (pinAttempts < MAX_ATTEMPTS) {
+        document.getElementById('pin-error').textContent = '';
+      }
+    }, 700);
+  }
+}
+
+function disablePinKeypad(disabled) {
+  document.querySelectorAll('.pin-key').forEach(btn => {
+    btn.disabled = disabled;
+    btn.style.opacity = disabled ? '0.3' : '1';
+  });
+}
+
+let lockoutTimer = null;
+function startLockoutDisplay(lockUntil) {
+  const errorEl = document.getElementById('pin-error');
+  const lockoutEl = document.getElementById('pin-lockout');
+  errorEl.textContent = '';
+  lockoutEl.classList.remove('hidden');
+
+  function updateCountdown() {
+    const remaining = Math.max(0, lockUntil - Date.now());
+    if (remaining <= 0) {
+      lockoutEl.classList.add('hidden');
+      lockoutEl.textContent = '';
+      disablePinKeypad(false);
+      pinAttempts = 0;
+      sessionStorage.removeItem('pin_attempts');
+      pinBuffer = '';
+      updatePinDots();
+      clearInterval(lockoutTimer);
+      return;
+    }
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    lockoutEl.textContent = `Too many wrong attempts.\nTry again in ${mins}:${String(secs).padStart(2,'0')}`;
+  }
+  updateCountdown();
+  lockoutTimer = setInterval(updateCountdown, 1000);
+}
+
+// Keyboard support for PIN
+document.addEventListener('keydown', e => {
+  if (document.getElementById('pin-overlay').style.display === 'none') return;
+  if (e.key >= '0' && e.key <= '9') pinKey(parseInt(e.key));
+  if (e.key === 'Backspace') pinBackspace();
+});
+
+// ==================== API ====================
+const API_BASE = 'https://api.posos.org';
+
+async function apiGet(runner) {
+  const res = await fetch(`${API_BASE}/data/${encodeURIComponent(runner)}`);
+  if (!res.ok) throw new Error('API error: ' + res.status);
+  return res.json();
+}
+
+async function apiPut(runner, dataObj) {
+  const res = await fetch(`${API_BASE}/data/${encodeURIComponent(runner)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dataObj)
+  });
+  if (!res.ok) throw new Error('API error: ' + res.status);
+  return res.json();
+}
+
+async function apiDelete(runner) {
+  const res = await fetch(`${API_BASE}/data/${encodeURIComponent(runner)}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('API error: ' + res.status);
+  return res.json();
+}
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text || 'Loading…';
+  document.getElementById('loading-overlay').classList.remove('hidden');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+
 // ==================== CONSTANTS ====================
 const RATES = [0, 4, 12, 24, 40];
 const BADGES = ['', '🥉', '🥈', '🥇', '💎'];
@@ -365,6 +636,7 @@ const COLORS = [
 ];
 
 // ==================== DATA MODEL ====================
+// data is now the local cache; each profile syncs to API under their name key
 let data = { profiles: [] };
 let activeProfileIdx = null;
 let activeWeek = 1;
@@ -385,7 +657,6 @@ function createProfile(name, emoji, colorIdx) {
 
 function createMonth(label, startDate) {
   const now = new Date();
-  // startDate should be a Sunday — either passed in or find next Sunday
   let sd = startDate ? new Date(startDate + 'T00:00:00') : findNextSunday(now);
   return {
     id: now.getTime().toString(),
@@ -399,7 +670,7 @@ function createMonth(label, startDate) {
 }
 function findNextSunday(d) {
   const r = new Date(d); r.setHours(0,0,0,0);
-  const dow = r.getDay(); // 0=Sun
+  const dow = r.getDay();
   if (dow !== 0) r.setDate(r.getDate() + (7 - dow));
   return r;
 }
@@ -468,7 +739,6 @@ function pRuns(p) { return p.months.reduce((s, m) => s + getMonthRuns(m), 0); }
 
 // ==================== PERSISTENCE ====================
 function migrateRanToday(profiles) {
-  // Add ranToday field to old data that only had distance
   profiles.forEach(p => {
     p.months.forEach(m => {
       m.days.forEach(d => {
@@ -479,14 +749,15 @@ function migrateRanToday(profiles) {
     });
   });
 }
+
 function saveToLocal() {
   try { localStorage.setItem('runRewardData_v3', JSON.stringify(data)); } catch(e) {}
 }
+
 function loadFromLocal() {
   try {
     const s = localStorage.getItem('runRewardData_v3');
     if (s) { data = JSON.parse(s); migrateRanToday(data.profiles); return true; }
-    // migrate v2
     const v2 = localStorage.getItem('runRewardData_v2');
     if (v2) {
       const old = JSON.parse(v2);
@@ -500,26 +771,79 @@ function loadFromLocal() {
   return false;
 }
 
+// ==================== CLOUD SYNC ====================
+async function loadRunnerFromCloud(runnerName) {
+  try {
+    showLoading('Loading ' + runnerName + '…');
+    const cloudData = await apiGet(runnerName);
+    hideLoading();
+    if (cloudData && cloudData.months) {
+      return cloudData;
+    }
+    return null;
+  } catch(e) {
+    hideLoading();
+    console.warn('Cloud load failed:', e);
+    return null;
+  }
+}
+
+async function saveRunnerToCloud(profile) {
+  try {
+    // Save the profile data (months + metadata, but not name/emoji/colorIdx which are local)
+    await apiPut(profile.name, {
+      id: profile.id,
+      months: profile.months,
+      activeMonthIdx: profile.activeMonthIdx
+    });
+  } catch(e) {
+    console.warn('Cloud save failed:', e);
+    showToast('⚠️', 'Cloud sync failed — data saved locally');
+  }
+}
+
+async function syncToCloud() {
+  const p = cp();
+  if (!p) return;
+  showLoading('Syncing to cloud…');
+  try {
+    await saveRunnerToCloud(p);
+    hideLoading();
+    showToast('☁️', 'Synced!');
+  } catch(e) {
+    hideLoading();
+    showToast('⚠️', 'Sync failed');
+  }
+}
+
+// Auto-save to cloud whenever data changes
+async function saveData() {
+  saveToLocal();
+  const p = cp();
+  if (p) {
+    await saveRunnerToCloud(p);
+  }
+}
+
 function exportData() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'run_reward_data.json';
+  a.download = 'run_reward_backup.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  showToast('💾', 'Data saved! Place file on your NAS shared folder.');
+  showToast('💾', 'Backup downloaded!');
 }
 
 function importData(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
       const imp = JSON.parse(e.target.result);
       if (imp.profiles && Array.isArray(imp.profiles)) {
         data = imp; migrateRanToday(data.profiles);
       } else if (imp.months && Array.isArray(imp.months)) {
-        // migrate v2 format
         data = { profiles: [{ id: '1', name: 'Runner', emoji: '🏃', colorIdx: 0, months: imp.months, activeMonthIdx: imp.activeMonthIdx || 0 }] };
       } else { showToast('❌', 'Invalid data file'); return; }
       saveToLocal();
@@ -546,9 +870,21 @@ function goHome() {
   renderHome();
 }
 
-function openProfile(idx) {
+async function openProfile(idx) {
   activeProfileIdx = idx;
   activeWeek = 1;
+  const p = data.profiles[idx];
+
+  // Try to load from cloud and merge
+  const cloudData = await loadRunnerFromCloud(p.name);
+  if (cloudData && cloudData.months) {
+    // Update local profile with cloud data
+    data.profiles[idx].months = cloudData.months;
+    data.profiles[idx].activeMonthIdx = cloudData.activeMonthIdx || 0;
+    migrateRanToday(data.profiles);
+    saveToLocal();
+  }
+
   applyProfileColor();
   showView('dashboard');
   renderDashboard();
@@ -754,8 +1090,7 @@ function renderHistory() {
     const runs = getMonthRuns(m), misses = getMonthMisses(m), bank = getMonthBank(m), peak = getHighestLevel(m);
     const logged = md(m).filter(d => d.logged).length, isCur = i === p.months.length - 1;
     const status = isCur ? '<span class="ht-current">Active</span>' : (logged === 28 ? '<span class="ht-green">Completed</span>' : '<span style="color:var(--text2)">Ended</span>');
-    const cycLabel = m.startDate ? m.label : m.label;
-    html += `<tr><td class="ht-label">${cycLabel}</td><td class="ht-gold">${BADGES[peak]} Lvl ${peak}</td><td>${runs}</td>
+    html += `<tr><td class="ht-label">${m.label}</td><td class="ht-gold">${BADGES[peak]} Lvl ${peak}</td><td>${runs}</td>
       <td style="color:${misses > 8 ? 'var(--red)' : 'var(--text2)'}">${misses}</td><td class="ht-green">$${bank}</td><td>${status}</td></tr>`;
   });
   const tr = pRuns(p), tm = p.months.reduce((s, m) => s + getMonthMisses(m), 0), tb = pBank(p);
@@ -782,40 +1117,53 @@ function openModal(dayNum) {
 }
 function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); modalDay = null; }
 
-function logRun() {
+async function logRun() {
   const inp = document.getElementById('modal-input'), dist = parseFloat(inp.value);
   const m = cm(), d = md(m)[modalDay - 1];
   d.ranToday = true;
   d.distance = (!isNaN(dist) && dist > 0) ? dist : null;
-  d.logged = true; saveToLocal(); closeModal();
+  d.logged = true;
+  saveToLocal();
+  closeModal();
   showToast('🏃', '+$' + getDayEarnings(m, d) + ' earned!');
-  checkWeekComplete(m, d.week); renderDashboard();
+  checkWeekComplete(m, d.week);
+  renderDashboard();
+  await saveRunnerToCloud(cp());
 }
 
-function logRest() {
+async function logRest() {
   const m = cm(), d = md(m)[modalDay - 1];
-  d.ranToday = false; d.distance = null; d.logged = true; saveToLocal(); closeModal();
-  showToast('😴', 'Rest day logged'); checkWeekComplete(m, d.week); renderDashboard();
+  d.ranToday = false; d.distance = null; d.logged = true;
+  saveToLocal();
+  closeModal();
+  showToast('😴', 'Rest day logged');
+  checkWeekComplete(m, d.week);
+  renderDashboard();
+  await saveRunnerToCloud(cp());
 }
 
-function clearDay() {
+async function clearDay() {
   const d = md(cm())[modalDay - 1]; d.distance = null; d.logged = false; d.ranToday = false;
   saveToLocal(); closeModal(); renderDashboard();
+  await saveRunnerToCloud(cp());
 }
-function clearWeek() {
+async function clearWeek() {
   if (!confirm('Clear all data for Week ' + activeWeek + '?')) return;
   getWeekDays(cm(), activeWeek).forEach(d => { d.distance = null; d.logged = false; d.ranToday = false; });
   saveToLocal(); closeModal(); showToast('🧹', 'Week ' + activeWeek + ' cleared'); renderDashboard();
+  await saveRunnerToCloud(cp());
 }
-function clearWeekDirect() {
+async function clearWeekDirect() {
   if (!confirm('Clear all data for Week ' + activeWeek + '?')) return;
   getWeekDays(cm(), activeWeek).forEach(d => { d.distance = null; d.logged = false; d.ranToday = false; });
   saveToLocal(); showToast('🧹', 'Week ' + activeWeek + ' cleared'); renderDashboard();
+  await saveRunnerToCloud(cp());
 }
-function clearAllDays() {
+async function clearAllDays() {
   if (!confirm('Clear ALL days for this entire cycle?')) return;
   md(cm()).forEach(d => { d.distance = null; d.logged = false; d.ranToday = false; });
   activeWeek = 1; saveToLocal(); closeModal(); showToast('🧹', 'Cycle reset'); renderDashboard();
+  await saveRunnerToCloud(cp());
 }
 
 function checkWeekComplete(m, wk) {
@@ -826,20 +1174,19 @@ function checkWeekComplete(m, wk) {
   }
 }
 
-function openNewMonthModal() {
+async function openNewMonthModal() {
   const ns = findNextSunday(new Date());
   document.getElementById('newmonth-date').value = ns.toISOString().slice(0, 10);
   document.getElementById('newmonth-name').value = '';
   document.getElementById('newmonth-warn').textContent = '';
   document.getElementById('newmonth-overlay').classList.add('show');
-  // Warn if not a Sunday on change
   document.getElementById('newmonth-date').onchange = function() {
     const d = new Date(this.value + 'T00:00:00');
     document.getElementById('newmonth-warn').textContent = d.getDay() !== 0 ? 'That is not a Sunday — weeks start on Sundays' : '';
   };
 }
 function closeNewMonthModal() { document.getElementById('newmonth-overlay').classList.remove('show'); }
-function createNewMonth() {
+async function createNewMonth() {
   const dateVal = document.getElementById('newmonth-date').value;
   if (!dateVal) { document.getElementById('newmonth-warn').textContent = 'Please pick a start date'; return; }
   const sd = new Date(dateVal + 'T00:00:00');
@@ -851,6 +1198,7 @@ function createNewMonth() {
   const p = cp(); p.months.push(createMonth(label, dateVal)); p.activeMonthIdx = p.months.length - 1;
   activeWeek = 1; saveToLocal(); closeNewMonthModal();
   showToast('🚀', 'New cycle: ' + label); fireConfetti(); renderDashboard();
+  await saveRunnerToCloud(p);
 }
 
 // ==================== PROFILE MANAGEMENT ====================
@@ -884,13 +1232,14 @@ function openAddRunner() {
   setTimeout(() => document.getElementById('runner-input').focus(), 100);
 }
 function closeAddRunner() { document.getElementById('addrunner-overlay').classList.remove('show'); }
-function addRunner() {
+async function addRunner() {
   const name = document.getElementById('runner-input').value.trim();
   if (!name) { document.getElementById('runner-input').style.borderColor = 'var(--red)'; return; }
   const p = createProfile(name, selectedEmoji, selectedColor);
   data.profiles.push(p);
   saveToLocal(); closeAddRunner();
   showToast('🎉', name + ' added! Set a start Sunday in New Cycle.'); fireConfetti(); renderHome();
+  await saveRunnerToCloud(p);
 }
 
 let editingProfileIdx = null;
@@ -907,19 +1256,21 @@ function openEditRunner(idx) {
   document.getElementById('editrunner-overlay').classList.add('show');
 }
 function closeEditRunner() { document.getElementById('editrunner-overlay').classList.remove('show'); editingProfileIdx = null; }
-function saveRunnerEdit() {
+async function saveRunnerEdit() {
   const name = document.getElementById('edit-runner-name').value.trim();
   if (!name) return;
   const p = data.profiles[editingProfileIdx];
   p.name = name; p.emoji = selectedEmoji; p.colorIdx = selectedColor;
   saveToLocal(); closeEditRunner(); showToast('✅', 'Updated!'); renderHome();
+  await saveRunnerToCloud(p);
 }
 function deleteRunner() {
   document.getElementById('delete-runner-btn').style.display = 'none';
   document.getElementById('delete-confirm').style.display = 'block';
 }
-function confirmDeleteRunner() {
+async function confirmDeleteRunner() {
   const p = data.profiles[editingProfileIdx];
+  try { await apiDelete(p.name); } catch(e) { console.warn('API delete failed:', e); }
   data.profiles.splice(editingProfileIdx, 1);
   document.getElementById('delete-confirm').style.display = 'none';
   document.getElementById('delete-runner-btn').style.display = '';
@@ -955,16 +1306,15 @@ function fireConfetti() {
 
 // Keyboard
 document.addEventListener('keydown', e => {
+  if (document.getElementById('pin-overlay').style.display !== 'none' &&
+      document.getElementById('pin-overlay').style.display !== '') return;
   if (e.key === 'Escape') { closeModal(); closeNewMonthModal(); closeAddRunner(); closeEditRunner(); }
-  // Enter in distance field triggers logRun
   if (e.key === 'Enter' && modalDay && document.activeElement === document.getElementById('modal-input')) logRun();
 });
 
 // ==================== INIT ====================
 loadFromLocal();
-if (data.profiles.length === 0) {
-  // First time — show home with empty grid, user adds runners
-}
+checkPinSession();
 showView('home');
 renderHome();
 </script>
