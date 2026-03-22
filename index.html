@@ -586,9 +586,12 @@ document.addEventListener('keydown', e => {
 
 // ==================== API ====================
 const API_BASE = 'https://api.posos.org';
+const API_KEY = 'HdTda0iZ-AiEmkSG_Zax6TL28_58Axv5__SHHWfTc1k';
 
 async function apiGet(runner) {
-  const res = await fetch(`${API_BASE}/data/${encodeURIComponent(runner)}`);
+  const res = await fetch(`${API_BASE}/data/${encodeURIComponent(runner)}`, {
+    headers: { 'X-API-Key': API_KEY }
+  });
   if (!res.ok) throw new Error('API error: ' + res.status);
   return res.json();
 }
@@ -596,7 +599,7 @@ async function apiGet(runner) {
 async function apiPut(runner, dataObj) {
   const res = await fetch(`${API_BASE}/data/${encodeURIComponent(runner)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
     body: JSON.stringify(dataObj)
   });
   if (!res.ok) throw new Error('API error: ' + res.status);
@@ -605,7 +608,8 @@ async function apiPut(runner, dataObj) {
 
 async function apiDelete(runner) {
   const res = await fetch(`${API_BASE}/data/${encodeURIComponent(runner)}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { 'X-API-Key': API_KEY }
   });
   if (!res.ok) throw new Error('API error: ' + res.status);
   return res.json();
