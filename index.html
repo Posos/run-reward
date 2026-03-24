@@ -1236,15 +1236,7 @@ function openAddRunner() {
   setTimeout(() => document.getElementById('runner-input').focus(), 100);
 }
 function closeAddRunner() { document.getElementById('addrunner-overlay').classList.remove('show'); }
-async function addRunner() {
-  const name = document.getElementById('runner-input').value.trim();
-  if (!name) { document.getElementById('runner-input').style.borderColor = 'var(--red)'; return; }
-  const p = createProfile(name, selectedEmoji, selectedColor);
-  data.profiles.push(p);
-  saveToLocal(); closeAddRunner();
-  showToast('🎉', name + ' added! Set a start Sunday in New Cycle.'); fireConfetti(); renderHome();
-  await saveRunnerToCloud(p);
-}
+
 
 let editingProfileIdx = null;
 function openEditRunner(idx) {
@@ -1317,10 +1309,86 @@ document.addEventListener('keydown', e => {
 });
 
 // ==================== INIT ====================
-loadFromLocal();
-checkPinSession();
-showView('home');
-renderHome();
+const KNOWN_RUNNERS = ['Elise', 'Noah', 'Olivia'];
+
+async function bootstrapFromCloud() {
+  // Only bootstrap if localStorage is empty (first visit on this device)
+  if (loadFromLocal()) return;
+
+  showLoading('Loading profiles…');
+  let found = 0;
+  for (const name of KNOWN_RUNNERS) {
+    try {
+      const cloudData = await apiGet(name);
+      if (cloudData && cloudData.months && cloudData.months.length > 0) {
+        // Pick a consistent emoji/color per runner
+        const defaults = { Elise: { emoji: '🏃‍♀️', colorIdx: 0 }, Noah: { emoji: '🏃', colorIdx: 1 }, Olivia: { emoji: '🏃‍♀️', colorIdx: 2 } };
+        const d = defaults[name] || { emoji: '🏃', colorIdx: found };
+        const p = {
+          id: cloudData.id || String(Date.now() + found),
+          name,
+          emoji: d.emoji,
+          colorIdx: d.colorIdx,
+          months: cloudData.months,
+          activeMonthIdx: cloudData.activeMonthIdx || 0
+        };
+        migrateRanToday([p]);
+        data.profiles.push(p);
+        found++;
+      }
+    } catch(e) { /* runner not in cloud yet, skip */ }
+  }
+  hideLoading();
+  if (found > 0) {
+    saveToLocal();
+    showToast('☁️', `Loaded ${found} runner${found > 1 ? 's' : ''} from cloud`);
+  }
+}
+
+async function addRunner() {
+  const name = document.getElementById('runner-input').value.trim();
+  if (!name) { document.getElementById('runner-input').style.borderColor = 'var(--red)'; return; }
+
+  // Overwrite protection: check if cloud already has data for this runner
+  try {
+    const existing = await apiGet(name);
+    if (existing && existing.months && existing.months.length > 0) {
+      const totalRuns = existing.months.reduce((sum, m) => sum + (m.days || []).filter(d => d.logged && d.ranToday).length, 0);
+      if (totalRuns > 0) {
+        if (!confirm(`"${name}" already has data in the cloud (${totalRuns} run${totalRuns !== 1 ? 's' : ''} logged). Load existing data instead of starting fresh?`)) return;
+        // Load from cloud instead
+        const d = { Elise: { emoji: '🏃‍♀️', colorIdx: 0 }, Noah: { emoji: '🏃', colorIdx: 1 }, Olivia: { emoji: '🏃‍♀️', colorIdx: 2 } };
+        const def = d[name] || { emoji: selectedEmoji, colorIdx: selectedColor };
+        const p = {
+          id: existing.id || String(Date.now()),
+          name,
+          emoji: selectedEmoji || def.emoji,
+          colorIdx: selectedColor !== undefined ? selectedColor : def.colorIdx,
+          months: existing.months,
+          activeMonthIdx: existing.activeMonthIdx || 0
+        };
+        migrateRanToday([p]);
+        data.profiles.push(p);
+        saveToLocal(); closeAddRunner();
+        showToast('☁️', name + ' loaded from cloud!'); renderHome();
+        return;
+      }
+    }
+  } catch(e) { /* no cloud data, proceed normally */ }
+
+  const p = createProfile(name, selectedEmoji, selectedColor);
+  data.profiles.push(p);
+  saveToLocal(); closeAddRunner();
+  showToast('🎉', name + ' added! Set a start Sunday in New Cycle.'); fireConfetti(); renderHome();
+  await saveRunnerToCloud(p);
+}
+
+(async () => {
+  await bootstrapFromCloud();
+  checkPinSession();
+  showView('home');
+  renderHome();
+})();
 </script>
 </body>
 </html>
