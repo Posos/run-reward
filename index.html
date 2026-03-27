@@ -395,8 +395,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 <div class="modal-overlay" id="newmonth-overlay">
   <div class="modal">
     <h3>Start New Cycle</h3>
-    <div class="modal-sub">Pick a Sunday to begin Week 1. Archives current cycle, starts fresh at Level 1.</div>
-    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Start Sunday</div>
+    <div class="modal-sub">Pick a start date for Week 1. Archives current cycle, starts fresh at Level 1.</div>
+    <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Start Date</div>
     <input type="date" id="newmonth-date" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1em;text-align:center;outline:none;margin-bottom:6px">
     <div id="newmonth-warn" style="font-size:.72em;color:var(--red);min-height:18px;margin-bottom:4px"></div>
     <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Cycle Label (optional)</div>
@@ -418,6 +418,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
     <div class="emoji-grid" id="emoji-grid"></div>
     <div style="font-size:.75em;color:var(--text2);margin:6px 0 2px;text-align:left">Color</div>
     <div class="color-grid" id="color-grid"></div>
+    <div style="font-size:.75em;color:var(--text2);margin:10px 0 2px;text-align:left">Day 1 starts on</div>
+    <input type="date" id="runner-start-date" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:.95em;">
+    <div id="runner-start-hint" style="font-size:.72em;color:var(--text2);margin-top:4px;text-align:left"></div>
     <div class="btn-row">
       <button class="btn-run" onclick="addRunner()">Add Runner</button>
       <button class="btn-cancel" onclick="closeAddRunner()">Cancel</button>
@@ -648,20 +651,20 @@ let modalDay = null;
 let selectedEmoji = AVATARS[0];
 let selectedColor = 0;
 
-function createProfile(name, emoji, colorIdx) {
+function createProfile(name, emoji, colorIdx, startDate) {
   return {
     id: Date.now().toString(),
     name: name,
     emoji: emoji || AVATARS[0],
     colorIdx: colorIdx || 0,
-    months: [createMonth()],
+    months: [createMonth(null, startDate || todayDateString())],
     activeMonthIdx: 0
   };
 }
 
 function createMonth(label, startDate) {
   const now = new Date();
-  let sd = startDate ? new Date(startDate + 'T00:00:00') : findNextSunday(now);
+  let sd = startDate ? new Date(startDate + 'T00:00:00') : now;
   return {
     id: now.getTime().toString(),
     label: label || formatCycleLabel(sd),
@@ -1179,14 +1182,14 @@ function checkWeekComplete(m, wk) {
 }
 
 async function openNewMonthModal() {
-  const ns = findNextSunday(new Date());
-  document.getElementById('newmonth-date').value = ns.toISOString().slice(0, 10);
+  const today = todayDateString();
+  document.getElementById('newmonth-date').value = today;
+  document.getElementById('newmonth-date').min = today;
   document.getElementById('newmonth-name').value = '';
-  document.getElementById('newmonth-warn').textContent = '';
+  document.getElementById('newmonth-warn').textContent = formatStartHint(today);
   document.getElementById('newmonth-overlay').classList.add('show');
   document.getElementById('newmonth-date').onchange = function() {
-    const d = new Date(this.value + 'T00:00:00');
-    document.getElementById('newmonth-warn').textContent = d.getDay() !== 0 ? 'That is not a Sunday — weeks start on Sundays' : '';
+    document.getElementById('newmonth-warn').textContent = formatStartHint(this.value);
   };
 }
 function closeNewMonthModal() { document.getElementById('newmonth-overlay').classList.remove('show'); }
@@ -1194,9 +1197,7 @@ async function createNewMonth() {
   const dateVal = document.getElementById('newmonth-date').value;
   if (!dateVal) { document.getElementById('newmonth-warn').textContent = 'Please pick a start date'; return; }
   const sd = new Date(dateVal + 'T00:00:00');
-  if (sd.getDay() !== 0) {
-    if (!confirm('The selected date is not a Sunday. Weeks are designed to start on Sunday. Continue anyway?')) return;
-  }
+  // Any start day is valid — Sunday aligns weeks naturally but not required
   const customLabel = document.getElementById('newmonth-name').value.trim();
   const label = customLabel || formatCycleLabel(sd);
   const p = cp(); p.months.push(createMonth(label, dateVal)); p.activeMonthIdx = p.months.length - 1;
@@ -1227,11 +1228,34 @@ function pickColor(el, cid, idx) {
   el.classList.add('selected');
 }
 
+function todayDateString() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function formatStartHint(dateVal) {
+  if (!dateVal) return '';
+  const d = new Date(dateVal + 'T00:00:00');
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today = todayDateString();
+  const end = new Date(d); end.setDate(end.getDate() + 27);
+  const cycleLabel = months[d.getMonth()] + ' ' + d.getDate() + ' – ' + months[end.getMonth()] + ' ' + end.getDate();
+  const prefix = dateVal === today ? 'Starts today' : 'Starts ' + days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+  return prefix + ' · 28-day cycle ends ' + months[end.getMonth()] + ' ' + end.getDate();
+}
 function openAddRunner() {
   selectedEmoji = AVATARS[0]; selectedColor = 0;
   document.getElementById('runner-input').value = '';
   buildEmojiGrid('emoji-grid', selectedEmoji);
   buildColorGrid('color-grid', selectedColor);
+  const today = todayDateString();
+  const startInput = document.getElementById('runner-start-date');
+  startInput.value = today;
+  startInput.min = today;
+  startInput.onchange = function() {
+    document.getElementById('runner-start-hint').textContent = formatStartHint(this.value);
+  };
+  document.getElementById('runner-start-hint').textContent = formatStartHint(today);
   document.getElementById('addrunner-overlay').classList.add('show');
   setTimeout(() => document.getElementById('runner-input').focus(), 100);
 }
@@ -1376,10 +1400,11 @@ async function addRunner() {
     }
   } catch(e) { /* no cloud data, proceed normally */ }
 
-  const p = createProfile(name, selectedEmoji, selectedColor);
+  const startDate = document.getElementById('runner-start-date').value || todayDateString();
+  const p = createProfile(name, selectedEmoji, selectedColor, startDate);
   data.profiles.push(p);
   saveToLocal(); closeAddRunner();
-  showToast('🎉', name + ' added! Set a start Sunday in New Cycle.'); fireConfetti(); renderHome();
+  showToast('🎉', name + ' added! Day 1 starts ' + startDate + '.'); fireConfetti(); renderHome();
   await saveRunnerToCloud(p);
 }
 
